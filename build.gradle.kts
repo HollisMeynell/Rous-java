@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "1.9.23"
+    `maven-publish`
 }
 
 group = "rosu.pp.jni"
@@ -18,6 +19,21 @@ tasks.test {
 }
 kotlin {
     jvmToolchain(21)
+}
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            groupId = "rosu.pp.jni"
+            artifactId = "rosu-pp-jni"
+            version = "0.1.0"
+        }
+    }
+    repositories {
+        maven {
+            url = uri("file://${buildDir}/repo")
+        }
+    }
 }
 tasks {
     val customJar by creating(Jar::class) {

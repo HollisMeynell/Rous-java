@@ -77,6 +77,9 @@ fn calculate (
             result.put_f64(data.pp());
             result.put_f64(data.stars());
             result.put_i32(data.max_combo() as i32);
+
+            result.put_f64(data.pp_acc);
+            result.put_f64(data.pp_difficulty);
         }
         PerformanceAttributes::Catch(data) => {
             result.put_u8(StatusFlag::Catch.bits());
@@ -89,6 +92,8 @@ fn calculate (
             result.put_f64(data.pp());
             result.put_f64(data.stars());
             result.put_i32(data.max_combo() as i32);
+
+            result.put_f64(data.pp_difficulty);
         }
     }
     Ok(result)
