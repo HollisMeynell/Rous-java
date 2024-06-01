@@ -35,4 +35,27 @@ data class JniScore(
         buffer.put(state.toBytes())
         return buffer.array()
     }
+
+    var mode: Mode by attr::mode
+
+    var mods: Int by attr::mods
+
+    var speed: Double by attr::speed
+
+    var accuracy: Double by attr::accuracy
+
+    var combo: Int by state::combo
+
+    var geki: Int by state::geki
+
+    var katu: Int by state::katu
+
+    var n300: Int by state::n300
+
+    var n100: Int by state::n100
+
+    var n50: Int by state::n50
+
+    var misses: Int by state::misses
+
 }
