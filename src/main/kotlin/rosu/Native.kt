@@ -28,7 +28,7 @@ class Native {
             Runtime.getRuntime().addShutdownHook(Thread {
                 try {
                     Files.delete(f)
-                } catch (e: Exception) {
+                } catch (ignore: Exception) {
 
                 }
             })
@@ -38,4 +38,10 @@ class Native {
 
     @JvmName("calculate")
     external fun calculate(localMap: ByteArray, source: ByteArray): ByteArray
+    @JvmName("getCalculateIterator")
+    external fun getCalculateIterator(localMap: ByteArray, mapAttr: ByteArray): ByteArray
+    @JvmName("calculateIterator")
+    external fun calculateIterator(ptr:Long, score: ByteArray): ByteArray
+    @JvmName("collectionCalculate")
+    external fun collectionCalculate(ptr:Long): Boolean
 }

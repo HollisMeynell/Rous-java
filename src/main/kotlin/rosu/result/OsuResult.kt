@@ -1,6 +1,5 @@
-package rosu.osu.result
+package rosu.result
 
-import rosu.osu.JniResult
 import rosu.osu.Mode
 
 class OsuResult : JniResult {

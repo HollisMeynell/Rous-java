@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "rosu.pp.jni"
-version = "0.1.0"
+version = "0.1.1"
 
 repositories {
     mavenCentral()
@@ -26,19 +26,14 @@ publishing {
             from(components["java"])
             groupId = "rosu.pp.jni"
             artifactId = "rosu-pp-jni"
-            version = "0.1.0"
-        }
-    }
-    repositories {
-        maven {
-            url = uri("file://${buildDir}/repo")
+            version = "0.1.1"
         }
     }
 }
 tasks {
     val customJar by creating(Jar::class) {
         archiveBaseName.set("rosu-pp-jni")
-        archiveVersion.set("0.1.0")
+        archiveVersion.set("0.1.1")
         from(sourceSets.main.get().output)
         destinationDirectory.set(layout.buildDirectory.dir("libs"))
     }

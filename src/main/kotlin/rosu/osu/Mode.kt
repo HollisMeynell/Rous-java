@@ -1,6 +1,7 @@
-package rosu.osu;
+package rosu.osu
 
-public enum class Mode {
+@Suppress("unused")
+enum class Mode {
     Osu,
     Taiko,
     Catch,
