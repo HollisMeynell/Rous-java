@@ -4,7 +4,16 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
-class Native {
+class Native private constructor() {
+    companion object {
+        @JvmStatic
+        val instance by lazy {
+            val native = Native()
+            native.loadLib
+            native
+        }
+    }
+
     val loadLib by lazy {
         val os: String = System.getProperty("os.name")
         val type = when {
@@ -38,10 +47,25 @@ class Native {
 
     @JvmName("calculate")
     external fun calculate(localMap: ByteArray, source: ByteArray): ByteArray
+
     @JvmName("getCalculateIterator")
     external fun getCalculateIterator(localMap: ByteArray, mapAttr: ByteArray): ByteArray
+
     @JvmName("calculateIterator")
-    external fun calculateIterator(ptr:Long, score: ByteArray): ByteArray
+    external fun calculateIterator(ptr: Long, score: ByteArray): ByteArray
+
     @JvmName("collectionCalculate")
-    external fun collectionCalculate(ptr:Long): Boolean
+    external fun collectionCalculate(ptr: Long): Boolean
+
+    @JvmName("createCollection")
+    external fun createCollection(name: String): ByteArray
+
+    @JvmName("setCollectionMap")
+    external fun setCollectionMap(ptr: Long, map: String): Boolean
+
+    @JvmName("newCollectionList")
+    external fun newCollectionList(ptr: Long): ByteArray
+
+    @JvmName("appendCollectionList")
+    external fun appendCollectionList(collectionList: ByteArray, ptr: Long): ByteArray
 }

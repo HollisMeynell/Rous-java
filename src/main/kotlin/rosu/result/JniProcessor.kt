@@ -96,4 +96,22 @@ object JniProcessor {
         buffer.get(bytes)
         return String(bytes)
     }
+
+    @JvmStatic
+    fun readPointer(bytes: ByteArray): Long {
+        val buffer = ByteBuffer.wrap(bytes)
+        if (ERROR == buffer.get().toUByte()) {
+            throw Exception(readString(buffer))
+        }
+        return buffer.getLong()
+    }
+
+    @JvmStatic
+    fun readBytes(bytes: ByteArray): ByteArray {
+        val buffer = ByteBuffer.wrap(bytes)
+        if (ERROR == buffer.get().toUByte()) {
+            throw Exception(readString(buffer))
+        }
+        return bytes.slice(1..<bytes.size).toByteArray()
+    }
 }

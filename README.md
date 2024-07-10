@@ -86,4 +86,10 @@ try (var cal = Rosu.getCalculate(f, new JniMapAttr())) {
   - `gradle build` 编译
   - 依赖 jar 在目录 `build/libs/rosu-java-x.y.z.jar`
 
+使用 `cross` 借助 docker 进行编译:
+```shell
+cross build --target=x86_64-pc-windows-gnu --release 
+cross build --target=x86_64-unknown-linux-gnu  --release 
+```
+
 
