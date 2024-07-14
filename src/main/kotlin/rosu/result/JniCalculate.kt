@@ -1,6 +1,5 @@
 package rosu.result
 
-import rosu.Native
 import rosu.Rosu
 import rosu.osu.Mode
 import rosu.parameter.JniMapAttr
