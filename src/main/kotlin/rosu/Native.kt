@@ -1,10 +1,11 @@
 package rosu
 
+import rosu.db.OsuCollection
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
-class Native private constructor() {
+internal class Native private constructor() {
     companion object {
         @JvmStatic
         val instance by lazy {
@@ -16,23 +17,21 @@ class Native private constructor() {
 
     val loadLib by lazy {
         val os: String = System.getProperty("os.name")
-        val type = when {
-            os.contains("windows", ignoreCase = true) -> "dll"
-            os.contains("mac", ignoreCase = true) -> "dylib"
-            os.contains("linux", ignoreCase = true) -> "so"
+        val name = when {
+            os.contains("windows", ignoreCase = true) -> "rosu_pp_java.dll"
+            os.contains("mac", ignoreCase = true) -> "rosu_pp_java.dylib"
+            os.contains("linux", ignoreCase = true) -> "librosu_pp_java.so"
             else -> throw Error("Unsupported OS")
         }
-        val name = "rosu_pp_java.${type}"
         val lib = Native::class.java.getResourceAsStream("/lib/${name}")
         lib?.use {
             val tmpDirPath = Path.of(
-                System.getenv("ROSU_LIB_PATH")
-                    ?: (System.getProperty("java.io.tmpdir") + "/jlib")
+                System.getenv("ROSU_LIB_PATH") ?: (System.getProperty("java.io.tmpdir"))
             )
             if (Files.isDirectory(tmpDirPath).not()) {
                 Files.createDirectory(tmpDirPath)
             }
-            val f = tmpDirPath.resolve(name)
+            val f = tmpDirPath.resolve("lib")
             Files.copy(lib, f, StandardCopyOption.REPLACE_EXISTING)
             Runtime.getRuntime().addShutdownHook(Thread {
                 try {
@@ -54,18 +53,49 @@ class Native private constructor() {
     @JvmName("calculateIterator")
     external fun calculateIterator(ptr: Long, score: ByteArray): ByteArray
 
-    @JvmName("collectionCalculate")
-    external fun collectionCalculate(ptr: Long): Boolean
+    @JvmName("releaseCalculate")
+    external fun releaseCalculate(ptr: Long): ByteArray
 
+    /**********************************************************************************************/
     @JvmName("createCollection")
-    external fun createCollection(name: String): ByteArray
+    external fun createCollection(collection: OsuCollection): ByteArray
 
-    @JvmName("setCollectionMap")
-    external fun setCollectionMap(ptr: Long, map: String): Boolean
+    @JvmName("readCollection")
+    external fun readCollection(data: ByteArray, collection: OsuCollection): ByteArray
 
-    @JvmName("newCollectionList")
-    external fun newCollectionList(ptr: Long): ByteArray
+    @JvmName("writeCollection")
+    external fun writeCollection(ptr: Long): ByteArray
 
-    @JvmName("appendCollectionList")
-    external fun appendCollectionList(collectionList: ByteArray, ptr: Long): ByteArray
+    // [(!0 error, 0 ok)-data]
+    @JvmName("releaseCollection")
+    external fun releaseCollection(ptr: Long): ByteArray
+
+    // hashes: "hash1,hash2,hash3"
+    @JvmName("addCollection")
+    external fun addCollection(ptr: Long, name: String, hashes: String): ByteArray
+
+    @JvmName("removeCollection")
+    external fun removeCollection(ptr: Long, index: Int): ByteArray
+
+    @JvmName("clearCollection")
+    external fun clearCollection(ptr: Long, index: Int): ByteArray
+
+    @JvmName("addAllCollectionHash")
+    external fun addAllCollectionHash(ptr: Long, index: Int, hashes: String): ByteArray
+
+    @JvmName("setCollectionName")
+    external fun setCollectionName(ptr: Long, index: Int, name: String): ByteArray
+
+    @JvmName("appendCollectionHash")
+    external fun appendCollectionHash(ptr: Long, index: Int, hash: String): ByteArray
+
+    @JvmName("insertCollectionHash")
+    external fun insertCollectionHash(ptr: Long, index: Int, hashIndex: Int, hash: String): ByteArray
+
+    @JvmName("setCollectionHash")
+    external fun setCollectionHash(ptr: Long, index: Int, hashIndex: Int, hash: String): ByteArray
+
+        @JvmName("removeCollectionHash")
+    external fun removeCollectionHash(ptr: Long, index: Int, hashIndex: Int): ByteArray
+
 }

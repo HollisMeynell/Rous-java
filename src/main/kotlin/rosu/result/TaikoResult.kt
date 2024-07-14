@@ -10,4 +10,8 @@ class TaikoResult : JniResult {
 
     var ppAcc: Double = 0.0
     var ppDifficulty: Double = 0.0
+
+    override fun toString(): String {
+        return "TaikoResult(mode=$mode, pp=$pp, star=$star, combo=$combo, ppAcc=$ppAcc, ppDifficulty=$ppDifficulty)"
+    }
 }

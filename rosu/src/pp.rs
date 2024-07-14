@@ -186,7 +186,7 @@ pub fn calculate_pp(
     ptr: i64,
     score: &JByteArray,
 ) -> Result<Vec<u8>> {
-    let gradual = to_status_use::<GradualPerformance>(ptr);
+    let gradual = to_status_use::<GradualPerformance>(ptr)?;
     let score = get_score(env, score)?;
     if score.score.is_none() {
         return Err(Error::from("no score"));

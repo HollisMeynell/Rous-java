@@ -1,10 +1,13 @@
+use std::mem;
+
 use bytes::BufMut;
+
+use java::Result;
 
 pub mod java;
 pub mod macros;
 mod pp;
 mod db;
-
 bitflags::bitflags! {
     struct StatusFlag :u8 {
         const Error = 0b10000000u8;
@@ -34,39 +37,22 @@ pub(crate) fn to_ptr<T>(s: T) -> i64 {
     Box::into_raw(Box::new(s)) as i64
 }
 #[inline]
-pub fn to_status_use<'l, T>(p: i64) -> &'l mut T {
-    unsafe { &mut *(p as *mut T) }
+pub fn to_status_use<'l, T>(p: i64) -> Result<&'l mut T> {
+    let point = p as *mut T;
+    if point.is_null() || point as usize % mem::align_of::<T>() != 0 {
+        return Err(format!("read pointer error: ({})", p).into());
+    }
+    unsafe {
+        Ok(&mut *(p as *mut T))
+    }
 }
 #[inline]
-fn to_status<T>(p: i64) -> Box<T> {
+fn to_status<T>(p: i64) -> Result<Box<T>> {
     let point = p as *mut T;
-    unsafe { Box::from_raw(point) }
-}
-
-#[test]
-fn test_byte_to_jni_score() {
-    let f = std::fs::read("F:\\bot\\attr").unwrap();
-    let s = crate::pp::JniScore::from(f.as_slice());
-    println!("s{}", s.attr.speed)
-}
-
-#[test]
-fn box_use() {
-    let mut t = Vec::new();
-    t.push(1u8);
-    t.push(6u8);
-    t.push(3u8);
-    t.push(12u8);
-
-    let p = Box::new(t);
-    let p = Box::into_raw(p);
-
-    let t = to_status_use::<Vec<u8>>(p as i64);
-    // let mut t = unsafe { &mut *p };
-    t.push(0u8);
-    t.push(1u8);
-    println!("{:?}", t);
-
-    let x = unsafe { Box::from_raw(p) };
-    println!("{:?}", x.as_slice());
+    if point.is_null() || point as usize % mem::align_of::<T>() != 0 {
+        return Err(format!("read pointer error: ({})", p).into());
+    }
+    unsafe {
+        Ok(Box::from_raw(point))
+    }
 }

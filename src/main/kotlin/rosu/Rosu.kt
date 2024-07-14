@@ -3,7 +3,6 @@ package rosu
 import rosu.parameter.JniMapAttr
 import rosu.parameter.JniScore
 import rosu.result.JniCalculate
-import rosu.result.JniProcessor
 import rosu.result.JniResult
 
 @Suppress("unused")
@@ -16,9 +15,13 @@ object Rosu {
     }
 
     @JvmStatic
-    fun calculate(calculate: JniCalculate) : JniResult {
-        val p = native.calculateIterator(calculate.ptr, calculate.getJniScore().toBytes())
+    internal fun calculate(ptr: Long, scoreBytes: ByteArray) : JniResult {
+        val p = native.calculateIterator(ptr, scoreBytes)
         return JniProcessor.bytesToResult(p)
+    }
+    @JvmStatic
+    fun calculate(calculate: JniCalculate) : JniResult {
+        return calculate.calculate()
     }
 
     @JvmStatic
@@ -28,8 +31,12 @@ object Rosu {
     }
 
     @JvmStatic
-    fun endCalculate(calculate: JniCalculate) {
-        native.collectionCalculate(calculate.ptr)
+    fun releaseCalculate(calculate: JniCalculate) {
+        calculate.close()
     }
 
+    internal fun releaseCalculate(ptr: Long) {
+        val result = native.releaseCalculate(ptr)
+        if (result.isNotEmpty()) throw Exception(String(result))
+    }
 }

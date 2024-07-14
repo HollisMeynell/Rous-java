@@ -1,5 +1,6 @@
 package rosu.result
 
+import rosu.Native
 import rosu.Rosu
 import rosu.osu.Mode
 import rosu.parameter.JniMapAttr
@@ -7,11 +8,13 @@ import rosu.parameter.JniScore
 import rosu.parameter.JniScoreState
 
 class JniCalculate (
-    val ptr: Long,
+    pointer: Long,
     val mode: Mode,
     val mods: Int,
     val score: JniScoreState
 ) : AutoCloseable{
+    private var ptr:Long? = pointer
+
     fun getJniScore(): JniScore {
         return JniScore(
             attr = JniMapAttr(
@@ -67,6 +70,12 @@ class JniCalculate (
      * @throws Exception if this resource cannot be closed
      */
     override fun close() {
-        Rosu.endCalculate(this)
+        if (ptr == null) return
+        Rosu.releaseCalculate(this.ptr!!)
+    }
+
+    fun calculate(): JniResult {
+        if (ptr == null) throw Error("Calculate is released")
+        return Rosu.calculate(this.ptr!!, this.getJniScore().toBytes())
     }
 }

@@ -12,4 +12,8 @@ class OsuResult : JniResult {
     var ppAim: Double = 0.0
     var ppFlashlight: Double = 0.0
     var ppSpeed: Double = 0.0
+
+    override fun toString(): String {
+        return "OsuResult(mode=$mode, pp=$pp, star=$star, combo=$combo, ppAcc=$ppAcc, ppAim=$ppAim, ppFlashlight=$ppFlashlight, ppSpeed=$ppSpeed)"
+    }
 }

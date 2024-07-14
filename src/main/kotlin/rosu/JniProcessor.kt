@@ -1,10 +1,11 @@
-package rosu.result
+package rosu
 
 import rosu.osu.Mode
 import rosu.parameter.JniScoreState
+import rosu.result.*
 import java.nio.ByteBuffer
 
-object JniProcessor {
+internal object JniProcessor {
     const val ERROR: UByte = 0b10000000u
     const val Osu: UByte = 0b00000001u
     const val Taiko: UByte = 0b00000010u
@@ -28,7 +29,7 @@ object JniProcessor {
         val mods = buffer.int
         val ptr = buffer.long
         val result = JniCalculate(
-            ptr = ptr,
+            pointer = ptr,
             mode = mode,
             mods = mods,
             score = JniScoreState()
