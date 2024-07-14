@@ -44,5 +44,6 @@ bin/
 .idea
 
 main.kt
+git.version
 
 /rosu/target

@@ -7,6 +7,13 @@ import rosu.result.JniResult
 
 @Suppress("unused")
 object Rosu {
+    val version by lazy {
+        val version = Rosu::class.java.getResourceAsStream("/git.version")
+        version?.use {
+            it.bufferedReader().readText().trim()
+        } ?: ""
+    }
+
     private val native = Native.instance
     @JvmStatic
     fun calculate(map: ByteArray, score: JniScore) : JniResult {
