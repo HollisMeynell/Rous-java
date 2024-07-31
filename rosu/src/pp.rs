@@ -1,9 +1,9 @@
 use bytes::{Buf, BufMut, Bytes};
 use jni::JNIEnv;
 use jni::objects::JByteArray;
-use rosu_pp::any::{PerformanceAttributes, ScoreState};
-use rosu_pp::model::mode::GameMode;
 use rosu_pp::{Beatmap, Difficulty, GradualPerformance, Performance};
+use rosu_pp::any::{DifficultyAttributes, PerformanceAttributes, ScoreState};
+use rosu_pp::model::mode::GameMode;
 
 use crate::{StatusFlag, to_ptr, to_status_use};
 use crate::java::{Error, Result};
@@ -22,8 +22,9 @@ pub struct JniScore {
 
 
 impl JniScore {
-    pub fn performance(self, max_combo: u32, performance: Performance) -> Performance {
-        let mut p = performance;
+    pub fn performance<'a>(self, attr: DifficultyAttributes) -> Performance<'a> {
+        let max_combo = attr.max_combo();
+        let mut p = Performance::new(attr);
         p = p.mods(self.attr.mods);
 
         if !self.attr.accuracy.is_zero() {
@@ -31,14 +32,21 @@ impl JniScore {
         }
 
         if let Some(mut s) = self.score {
+            println!("{:?}", &s);
             if s.max_combo == 0 {
                 s.max_combo = max_combo;
             }
-            p.state(s)
+            if s.n300 > 0 ||
+                s.n100 > 0 ||
+                s.n50 > 0 ||
+                s.n_geki > 0 ||
+                s.n_katu > 0 ||
+                s.misses > 0 {
+                p = p.state(s);
+            }
+            p
         } else {
-            let mut s = ScoreState::default();
-            s.max_combo = max_combo;
-            p.state(s)
+            p.combo(max_combo)
         }
     }
 }
@@ -84,7 +92,6 @@ impl From<&[u8]> for JniMapAttr {
         } else if accuracy < 1.001f64 {
             accuracy *= 100f64;
         }
-
         JniMapAttr {
             mode,
             mods,
@@ -149,8 +156,8 @@ pub fn calculate(
         difficulty.calculate(&map)
     };
 
-    let max_combo = attributes.max_combo();
-    let performance = score.performance(max_combo, Performance::new(attributes));
+    let performance = score.performance(attributes);
+    println!("p: {:?}", &performance);
     let mut result = Vec::<u8>::new();
     attr_to_bytes(&performance.calculate(), &mut result);
     Ok(result)
@@ -324,57 +331,3 @@ fn calculate_to_bytes(ptr: i64, mode: GameMode, mods: u32, result: &mut dyn BufM
     result.put_i32(mods as i32);
     result.put_i64(ptr);
 }
-
-
-/*
-fn get_score_status(env: &JNIEnv, state: &JByteArray) ->Result<rosu_pp::any::ScoreState>{
-    let state_bytes = env.convert_byte_array(state)?;
-    let stats = bytes_to_score_state(bytes::Bytes::from(state_bytes));
-    Ok(stats)
-}
-
-#[no_mangle]
-pub extern "system" fn Java_rosu_Native_test<'local>(
-    mut env: JNIEnv<'local>,
-    _class: JClass<'local>,
-    path: JString<'local>,
-    source: JByteBuffer<'local>,
-) -> JByteArray<'local> {
-    let s = env.get_string(&path).expect("err");
-
-    let s = format!("fuck you, {}", s.to_str().unwrap());
-    let d = (&s).as_bytes();
-
-    let js = get_buffer(&env, &source).unwrap();
-
-    let dl = d.len();
-    let mut buffer: Vec<u8> = Vec::with_capacity(size_of_val(&dl) + dl);
-    buffer.put_i32(dl as i32);
-    buffer.put(d);
-
-    js[..buffer.len()].copy_from_slice(&buffer);
-
-    env.byte_array_from_slice(d).unwrap()
-}
-
-fn get_buffer<'t>(env: &'t JNIEnv, buff: &'t JByteBuffer) -> jni::errors::Result<&'t mut [u8]> {
-    let jsp = env.get_direct_buffer_address(&buff)?;
-    let jsl = env.get_direct_buffer_capacity(&buff)?;
-    unsafe { Ok(std::slice::from_raw_parts_mut(jsp, jsl)) }
-}
-
-fn get_str<'str>(env: &mut JNIEnv, string: &'str JString) -> jni::errors::Result<&'str str> {
-    let s = env.get_string(string)?.to_str().expect("to str err");
-    Ok(s)
-}
-
-fn get_string(env: &mut JNIEnv, string: &JString) -> jni::errors::Result<String> {
-    let s: String = env.get_string(string)?.into();
-    Ok(s)
-}
-
-#[inline]
-fn to_bytes<'local>(env: &'local JNIEnv, data: &[u8]) -> jni::errors::Result<JByteArray<'local>> {
-    env.byte_array_from_slice(data)
-}
-*/

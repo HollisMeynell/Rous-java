@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "rosu.pp.jni"
-version = "0.1.2"
+version = "0.1.3"
 
 repositories {
     mavenCentral()
@@ -20,11 +20,6 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib"))
     testImplementation(kotlin("test"))
-    // svg 操作库, 支持导出图
-    implementation("org.apache.xmlgraphics:batik-all:1.17")
-    // 浏览器操作库
-    // https://playwright.dev/java/docs/api/class-page#page-wait-for-url
-    implementation("com.microsoft.playwright:playwright:1.45.1")
 }
 
 tasks.test {
@@ -44,22 +39,41 @@ fun Path.write(data: ByteArray) {
 
 task("buildRust") {
     val rosuDir = layout.projectDirectory.dir("rosu").asFile
+    val outDir = outPath.resolve("lib")
+    var passable = false
+    // if it has any lib file, build is passable
+    if (Files.isDirectory(outDir)) {
+        Files.newDirectoryStream(outDir).use {
+            passable = it.iterator().hasNext()
+        }
+    }
     // test cargo
-    try {
+    val testResult = try {
+        val testCmd = ProcessBuilder("cargo", "--version")
+            .directory(rosuDir)
+            .start()
+        if (testCmd.waitFor() != 0) throw Exception()
+        true
+    } catch (e: Exception) {
+        if (!passable) {
+            throw Exception("rust environment not find, can not build.")
+        }
+        false
+    }
+
+    // build lib
+    if (testResult) try {
         val cmd = ProcessBuilder("cargo", "build", "--release")
             .directory(rosuDir)
             .start()
-        cmd.inputStream.bufferedReader().forEachLine {
-            println(it)
-        }
-        if (cmd.waitFor() != 0) {
-            throw Error()
-        }
+        if (cmd.waitFor() != 0) throw Exception()
     } catch (e: Exception) {
-        throw Error("build rust error", e)
+        if (!passable) {
+            throw Exception("build rust error.", e)
+        }
     }
-    val outDir = outPath.resolve("lib")
-    Files.find(rosuDir.resolve("target").toPath(), 2, {path,_ ->
+
+    Files.find(rosuDir.resolve("target").toPath(), 2, { path, _ ->
         path.name.endsWith(".so") || path.name.endsWith(".dll") || path.name.endsWith(".dylib")
     }).forEach {
         Files.copy(it, outDir.resolve(it.fileName), StandardCopyOption.REPLACE_EXISTING)
