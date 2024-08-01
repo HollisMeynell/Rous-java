@@ -1,3 +1,4 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -119,8 +120,11 @@ publishing {
             groupId = project.group.toString()
             artifactId = "rosu-pp-jni"
             version = project.version.toString()
-
             from(components["java"])
         }
     }
+}
+
+tasks.withType<ShadowJar> {
+    minimize()
 }

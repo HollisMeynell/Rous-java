@@ -32,7 +32,6 @@ impl JniScore {
         }
 
         if let Some(mut s) = self.score {
-            println!("{:?}", &s);
             if s.max_combo == 0 {
                 s.max_combo = max_combo;
             }
@@ -157,7 +156,6 @@ pub fn calculate(
     };
 
     let performance = score.performance(attributes);
-    println!("p: {:?}", &performance);
     let mut result = Vec::<u8>::new();
     attr_to_bytes(&performance.calculate(), &mut result);
     Ok(result)

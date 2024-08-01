@@ -4,6 +4,7 @@ import rosu.db.OsuCollection
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import kotlin.io.path.absolutePathString
 
 internal class Native private constructor() {
     companion object {
@@ -26,13 +27,13 @@ internal class Native private constructor() {
         val lib = Native::class.java.getResourceAsStream("/lib/${name}")
         lib?.use {
             val tmpDirPath = Path.of(
-                System.getenv("ROSU_LIB_PATH") ?: (System.getProperty("java.io.tmpdir"))
+                System.getenv("ROSU_LIB_PATH") ?: (System.getProperty("java.io.tmpdir") + "/jlib")
             )
             if (Files.isDirectory(tmpDirPath).not()) {
                 Files.createDirectory(tmpDirPath)
             }
-            val f = tmpDirPath.resolve("lib")
-            Files.copy(lib, f, StandardCopyOption.REPLACE_EXISTING)
+            val f = tmpDirPath.resolve(name)
+            Files.copy(it, f, StandardCopyOption.REPLACE_EXISTING)
             Runtime.getRuntime().addShutdownHook(Thread {
                 try {
                     Files.delete(f)
@@ -40,7 +41,7 @@ internal class Native private constructor() {
 
                 }
             })
-            System.load(f.toString())
+            System.load(f.absolutePathString())
         }
     }
 
