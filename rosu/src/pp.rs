@@ -8,6 +8,7 @@ use rosu_pp::model::mode::GameMode;
 use crate::{StatusFlag, to_ptr, to_status_use};
 use crate::java::{Error, Result};
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct JniMapAttr {
     pub mode: Option<GameMode>,
     pub mods: u32,
@@ -15,6 +16,7 @@ pub struct JniMapAttr {
     pub accuracy: f64,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct JniScore {
     pub attr: JniMapAttr,
     pub score: Option<ScoreState>,
@@ -35,15 +37,13 @@ impl JniScore {
             if s.max_combo == 0 {
                 s.max_combo = max_combo;
             }
-            if s.n300 > 0 ||
-                s.n100 > 0 ||
-                s.n50 > 0 ||
-                s.n_geki > 0 ||
-                s.n_katu > 0 ||
-                s.misses > 0 {
-                p = p.state(s);
-            }
-            p
+            if s.n300 > 0 { p = p.n300(s.n300) }
+            if s.n100 > 0 { p = p.n100(s.n100) }
+            if s.n50 > 0 { p = p.n50(s.n50) }
+            if s.n_geki > 0 { p = p.n_geki(s.n_geki) }
+            if s.n_katu > 0 { p = p.n_katu(s.n_katu) }
+            if s.misses > 0 { p = p.misses(s.misses) }
+            p.combo(s.max_combo)
         } else {
             p.combo(max_combo)
         }
@@ -136,8 +136,6 @@ impl TestZero for f64 {
         self.abs() < 1e-9
     }
 }
-
-
 
 /// 计算 pp, 如果没有成绩就是 map 的fc成绩
 pub fn calculate(
@@ -320,10 +318,10 @@ fn attr_to_bytes(attr: &PerformanceAttributes, result: &mut dyn BufMut) {
 
 fn calculate_to_bytes(ptr: i64, mode: GameMode, mods: u32, result: &mut dyn BufMut) {
     let head = match mode {
-        GameMode::Osu => {StatusFlag::Osu}
-        GameMode::Taiko => {StatusFlag::Taiko}
-        GameMode::Catch => {StatusFlag::Catch}
-        GameMode::Mania => {StatusFlag::Mania}
+        GameMode::Osu => { StatusFlag::Osu }
+        GameMode::Taiko => { StatusFlag::Taiko }
+        GameMode::Catch => { StatusFlag::Catch }
+        GameMode::Mania => { StatusFlag::Mania }
     };
     result.put_u8(head.bits());
     result.put_i32(mods as i32);
