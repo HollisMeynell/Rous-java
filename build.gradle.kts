@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "rosu.pp.jni"
-version = "0.1.4"
+version = "0.1.5"
 
 repositories {
     mavenCentral()
@@ -111,7 +111,7 @@ tasks.register<JavaExec>("run") {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(17)
 }
 
 publishing {

@@ -233,7 +233,7 @@ fn get_map_and_attr(
     let attr = get_map_attr(env, attr)?;
 
     if let Some(m) = attr.mode {
-        map.mode = m;
+        map.convert_in_place(m);
     }
 
     Ok((map, attr))
