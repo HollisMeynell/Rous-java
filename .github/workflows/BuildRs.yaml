@@ -1,0 +1,41 @@
+name: build-rs
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - rosu/**
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    defaults:
+      run:
+        working-directory: rosu
+    runs-on: ${{ matrix.os}}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: clippy
+      - name: Build
+        run: cargo build --release
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-x86_64
+          path: |
+            rosu/target/release/**rosu_pp_java**
+            !rosu/target/release/**rosu_pp_java.d
