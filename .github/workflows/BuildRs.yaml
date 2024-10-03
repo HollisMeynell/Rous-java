@@ -6,6 +6,9 @@ on:
       - master
     paths:
       - rosu/**
+permissions:
+  contents: write
+  discussions: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,7 +18,7 @@ jobs:
     defaults:
       run:
         working-directory: rosu
-    runs-on: ${{ matrix.os}}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -25,17 +28,18 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
           components: clippy
+      - name: Set up cache
+        uses: Swatinem/rust-cache@v2
       - name: Build
         run: cargo build --release
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          name: ${{ matrix.os }}-x86_64
-          path: |
-            rosu/target/release/**rosu_pp_java**
-            !rosu/target/release/**rosu_pp_java.d
+          files: |
+            rosu/target/release/rosu_pp_java.dll
+            rosu/target/release/librosu_pp_java.so
+            rosu/target/release/librosu_pp_java.dylib

@@ -12,14 +12,18 @@ plugins {
 }
 
 group = "rosu.pp.jni"
-version = "0.1.5"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-
+    // svg 操作库, 支持导出图
+//    implementation("org.apache.xmlgraphics:batik-all:1.17")
+    // 浏览器操作库
+    // https://playwright.dev/java/docs/api/class-page#page-wait-for-url
+//    implementation("com.microsoft.playwright:playwright:1.45.1")
 }
 
 tasks.test {

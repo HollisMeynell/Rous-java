@@ -1,11 +1,12 @@
-use jni::JNIEnv;
+use bytes::BufMut;
 use jni::objects::{GlobalRef, JByteArray, JObject, JString};
 use jni::sys::jlong;
+use jni::JNIEnv;
 use osu_db::collection::Collection;
 use osu_db::CollectionList;
 
-use crate::{to_ptr, to_status, to_status_use};
 use crate::java::Result;
+use crate::{to_ptr, to_status, to_status_use, StatusFlag};
 
 const VERSION: u32 = 20220424;
 
@@ -29,10 +30,7 @@ impl JniCollectionList {
         let collection_list_data = env.convert_byte_array(bytes)?;
         let data = CollectionList::from_bytes(&collection_list_data)?;
         let callback = env.new_global_ref(&obj)?;
-        let result = JniCollectionList {
-            data,
-            callback,
-        };
+        let result = JniCollectionList { data, callback };
         init_jni_collection_list(env, result)?;
         Ok(())
     }
@@ -42,10 +40,7 @@ impl JniCollectionList {
     }
 }
 
-fn init_jni_collection_list(
-    env: &mut JNIEnv,
-    collection: JniCollectionList,
-) -> Result<()> {
+fn init_jni_collection_list(env: &mut JNIEnv, collection: JniCollectionList) -> Result<()> {
     let callback = collection.callback.clone();
     let version = collection.data.version as i32;
     let mut str = String::new();
@@ -66,7 +61,12 @@ fn init_jni_collection_list(
     let jni_str = env.new_string(str)?;
 
     let ptr = to_ptr(collection);
-    env.call_method(&callback, "setCollections$rosu_java", "(Ljava/lang/String;)V", &[(&jni_str).into()])?;
+    env.call_method(
+        &callback,
+        "setCollections$rosu_java",
+        "(Ljava/lang/String;)V",
+        &[(&jni_str).into()],
+    )?;
     env.call_method(&callback, "setVersion$rosu_java", "(I)V", &[version.into()])?;
     env.call_method(&callback, "setPtr$rosu_java", "(J)V", &[ptr.into()])?;
     Ok(())
@@ -75,6 +75,7 @@ fn init_jni_collection_list(
 pub fn write_collection(ptr: i64) -> Result<Vec<u8>> {
     let collection_list = to_status_use::<JniCollectionList>(ptr)?;
     let mut result = vec![];
+    result.put_u8(StatusFlag::None.bits());
     collection_list.data.to_writer(&mut result)?;
     Ok(result)
 }
@@ -92,7 +93,10 @@ pub fn add_collection(
         .split(",")
         .filter(|x| x.len() > 0)
         .for_each(|x| (&mut beatmap_hashes).push(Some(x.to_string())));
-    let collection = Collection { name: Some(name), beatmap_hashes };
+    let collection = Collection {
+        name: Some(name),
+        beatmap_hashes,
+    };
     to_status_use::<JniCollectionList>(ptr)?
         .data
         .collections
@@ -109,9 +113,9 @@ pub fn remove_collection(ptr: i64, index: i32) -> Result<()> {
 }
 
 pub fn clear_collection(ptr: i64, index: i32) -> Result<()> {
-    to_status_use::<JniCollectionList>(ptr)?
-        .data.collections[index as usize]
-        .beatmap_hashes.clear();
+    to_status_use::<JniCollectionList>(ptr)?.data.collections[index as usize]
+        .beatmap_hashes
+        .clear();
     Ok(())
 }
 
@@ -131,17 +135,9 @@ pub fn add_all_collection_hash(
     Ok(())
 }
 
-pub fn set_collection_name(
-    env: &mut JNIEnv,
-    ptr: i64,
-    index: i32,
-    name: &JString,
-) -> Result<()> {
+pub fn set_collection_name(env: &mut JNIEnv, ptr: i64, index: i32, name: &JString) -> Result<()> {
     let name: String = env.get_string(name)?.into();
-    to_status_use::<JniCollectionList>(ptr)?
-        .data
-        .collections[index as usize]
-        .name = Some(name);
+    to_status_use::<JniCollectionList>(ptr)?.data.collections[index as usize].name = Some(name);
     Ok(())
 }
 
@@ -152,9 +148,7 @@ pub fn append_collection_hash(
     hash: &JString,
 ) -> Result<()> {
     let hash: String = env.get_string(hash)?.into();
-    to_status_use::<JniCollectionList>(ptr)?
-        .data
-        .collections[index as usize]
+    to_status_use::<JniCollectionList>(ptr)?.data.collections[index as usize]
         .beatmap_hashes
         .push(Some(hash));
     Ok(())
@@ -168,9 +162,7 @@ pub fn insert_collection_hash(
     hash: &JString,
 ) -> Result<()> {
     let hash: String = env.get_string(hash)?.into();
-    to_status_use::<JniCollectionList>(ptr)?
-        .data
-        .collections[index as usize]
+    to_status_use::<JniCollectionList>(ptr)?.data.collections[index as usize]
         .beatmap_hashes
         .insert(hash_index as usize, Some(hash));
     Ok(())
@@ -184,21 +176,13 @@ pub fn set_collection_hash(
     hash: &JString,
 ) -> Result<()> {
     let hash: String = env.get_string(hash)?.into();
-    to_status_use::<JniCollectionList>(ptr)?
-        .data
-        .collections[index as usize]
-        .beatmap_hashes[hash_index as usize] = Some(hash);
+    to_status_use::<JniCollectionList>(ptr)?.data.collections[index as usize].beatmap_hashes
+        [hash_index as usize] = Some(hash);
     Ok(())
 }
 
-pub fn remove_collection_hash(
-    ptr: i64,
-    index: i32,
-    hash_index: i32,
-) -> Result<()> {
-    to_status_use::<JniCollectionList>(ptr)?
-        .data
-        .collections[index as usize]
+pub fn remove_collection_hash(ptr: i64, index: i32, hash_index: i32) -> Result<()> {
+    to_status_use::<JniCollectionList>(ptr)?.data.collections[index as usize]
         .beatmap_hashes
         .remove(hash_index as usize);
     Ok(())

@@ -2,11 +2,13 @@
 ---
 一个基于 [`rosu-pp`](https://github.com/MaxOhn/rosu-pp) 计算星级以及 pp 的JNI库
 
+# 注意, 此项目不再进行非 bug 处理的维护, 替代项目即将在其他项目中作为子项目提供
+
 ## 下载
  [点击访问](https://disk.365246692.xyz/other/rosu-jni-release)
-> !! 不带 `all` 的需要自行解决 kotlin 运行时环境, 带 `all` 的打包了 kotlin 运行时, 不懂得直接选择打包了的!!
+> !! 不带 `all` 的需要自行解决 kotlin 运行时环境, 带 `all` 的打包了 kotlin 运行时 !!
 
-**注意, 对 windows/linux 的 x64 平台已提供 rust 编译产物, 其他设备运行需要手动编译,
+**注意, 对于 x64 平台已提供 rust 编译产物, 其他设备运行需要手动编译,
 详见下方编译**
 
 ## 使用
@@ -165,7 +167,7 @@ try (OsuCollection collection = OsuDB.createCollection()){
 ```
 
 ## 编译
-!! 注意: 由于本人没有 mac 设备, 也没有具体研究交叉编译, 所以 rosu 出现编译问题请自行解决
+!! 对于 x86 架构的 linux/windows/mac 已经在 github release 提供了对应的 lib 产物, 可以自行下载
 - 编译环境: 
   - jdk, gradle 以及 kotlin 环境, 版本尽可能新, 理论上 jdk 大于 8 即可(但是我是jdk 21)
     - rust 编译环境, 自行安装

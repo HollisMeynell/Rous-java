@@ -1,12 +1,12 @@
 use bytes::{Buf, BufMut, Bytes};
-use jni::JNIEnv;
 use jni::objects::JByteArray;
-use rosu_pp::{Beatmap, Difficulty, GradualPerformance, Performance};
+use jni::JNIEnv;
 use rosu_pp::any::{DifficultyAttributes, PerformanceAttributes, ScoreState};
 use rosu_pp::model::mode::GameMode;
+use rosu_pp::{Beatmap, Difficulty, GradualPerformance, Performance};
 
-use crate::{StatusFlag, to_ptr, to_status_use};
 use crate::java::{Error, Result};
+use crate::{to_ptr, to_status_use, StatusFlag};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct JniMapAttr {
@@ -22,7 +22,6 @@ pub struct JniScore {
     pub score: Option<ScoreState>,
 }
 
-
 impl JniScore {
     pub fn performance<'a>(self, attr: DifficultyAttributes) -> Performance<'a> {
         let max_combo = attr.max_combo();
@@ -37,12 +36,24 @@ impl JniScore {
             if s.max_combo == 0 {
                 s.max_combo = max_combo;
             }
-            if s.n300 > 0 { p = p.n300(s.n300) }
-            if s.n100 > 0 { p = p.n100(s.n100) }
-            if s.n50 > 0 { p = p.n50(s.n50) }
-            if s.n_geki > 0 { p = p.n_geki(s.n_geki) }
-            if s.n_katu > 0 { p = p.n_katu(s.n_katu) }
-            if s.misses > 0 { p = p.misses(s.misses) }
+            if s.n300 > 0 {
+                p = p.n300(s.n300)
+            }
+            if s.n100 > 0 {
+                p = p.n100(s.n100)
+            }
+            if s.n50 > 0 {
+                p = p.n50(s.n50)
+            }
+            if s.n_geki > 0 {
+                p = p.n_geki(s.n_geki)
+            }
+            if s.n_katu > 0 {
+                p = p.n_katu(s.n_katu)
+            }
+            if s.misses > 0 {
+                p = p.misses(s.misses)
+            }
             p.combo(s.max_combo)
         } else {
             p.combo(max_combo)
@@ -110,10 +121,7 @@ impl From<&[u8]> for JniScore {
         let attr = JniMapAttr::from(&value[0..21]);
 
         if length < 49 {
-            return JniScore {
-                attr,
-                score: None,
-            };
+            return JniScore { attr, score: None };
         }
 
         let bytes = Bytes::copy_from_slice(&value[21..49]);
@@ -138,15 +146,14 @@ impl TestZero for f64 {
 }
 
 /// 计算 pp, 如果没有成绩就是 map 的fc成绩
-pub fn calculate(
-    env: &JNIEnv,
-    local_map: &JByteArray,
-    score: &JByteArray,
-) -> Result<Vec<u8>> {
+/// - all: `[(mode)u8 | (pp)f64 | (star)f64 | (max combo)i32]`
+/// - osu: `[(pp_{acc, aim, speed, fl})f64 * 4]`
+/// - taiko: `[(pp_{acc, difficulty})f64 * 2]`
+/// - mania: `[(pp_difficulty)f64]`
+pub fn calculate(env: &JNIEnv, local_map: &JByteArray, score: &JByteArray) -> Result<Vec<u8>> {
     let (map, score) = get_map_and_score(env, local_map, score)?;
 
-    let difficulty = Difficulty::new()
-        .mods(score.attr.mods);
+    let difficulty = Difficulty::new().mods(score.attr.mods);
     let attributes = if score.attr.speed > 0.0 {
         difficulty.clock_rate(score.attr.speed).calculate(&map)
     } else {
@@ -159,17 +166,16 @@ pub fn calculate(
     Ok(result)
 }
 
-/// 渐进式计算成绩 获得计算器
-pub fn get_calculate(
-    env: &JNIEnv,
-    local_map: &JByteArray,
-    attr: &JByteArray,
-) -> Result<Vec<u8>> {
+/// 渐进 pp 的计算器
+///
+/// 获取 [`GradualPerformance`] 的指针
+///
+/// ` [(mode)u8 | (mods)i32 | (ptr)f64] `
+pub fn get_calculate(env: &JNIEnv, local_map: &JByteArray, attr: &JByteArray) -> Result<Vec<u8>> {
     let (map, attr) = get_map_and_attr(env, local_map, attr)?;
     let mode = map.mode;
     let mods = attr.mods;
-    let difficulty = Difficulty::new()
-        .mods(mods);
+    let difficulty = Difficulty::new().mods(mods);
     let gradual = if attr.speed > 0.0 {
         difficulty.clock_rate(attr.speed).gradual_performance(&map)
     } else {
@@ -183,12 +189,11 @@ pub fn get_calculate(
 }
 
 /// 渐进计算 pp
-/// `ptr` 计算器指针
-pub fn calculate_pp(
-    env: &JNIEnv,
-    ptr: i64,
-    score: &JByteArray,
-) -> Result<Vec<u8>> {
+///
+/// ptr: [`GradualPerformance`] 的指针
+///
+/// 返回值与 [`calculate`] 相同
+pub fn calculate_pp(env: &JNIEnv, ptr: i64, score: &JByteArray) -> Result<Vec<u8>> {
     let gradual = to_status_use::<GradualPerformance>(ptr)?;
     let score = get_score(env, score)?;
     if score.score.is_none() {
@@ -318,10 +323,10 @@ fn attr_to_bytes(attr: &PerformanceAttributes, result: &mut dyn BufMut) {
 
 fn calculate_to_bytes(ptr: i64, mode: GameMode, mods: u32, result: &mut dyn BufMut) {
     let head = match mode {
-        GameMode::Osu => { StatusFlag::Osu }
-        GameMode::Taiko => { StatusFlag::Taiko }
-        GameMode::Catch => { StatusFlag::Catch }
-        GameMode::Mania => { StatusFlag::Mania }
+        GameMode::Osu => StatusFlag::Osu,
+        GameMode::Taiko => StatusFlag::Taiko,
+        GameMode::Catch => StatusFlag::Catch,
+        GameMode::Mania => StatusFlag::Mania,
     };
     result.put_u8(head.bits());
     result.put_i32(mods as i32);

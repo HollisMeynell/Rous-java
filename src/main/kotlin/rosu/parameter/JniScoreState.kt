@@ -1,7 +1,5 @@
 package rosu.parameter
 
-import java.nio.ByteBuffer
-
 data class JniScoreState(
     var combo: Int = 0,
     var geki:Int = 0,
@@ -13,15 +11,13 @@ data class JniScoreState(
 ) : Parameter {
     override fun size(): Int = 4*7
 
-    override fun toBytes(): ByteArray {
-        val buffer = ByteBuffer.allocate(size())
-        buffer.putInt(combo)
-        buffer.putInt(geki)
-        buffer.putInt(katu)
-        buffer.putInt(n300)
-        buffer.putInt(n100)
-        buffer.putInt(n50)
-        buffer.putInt(misses)
-        return buffer.array()
+    override fun toBytes() = buffer {
+        putInt(combo)
+        putInt(geki)
+        putInt(katu)
+        putInt(n300)
+        putInt(n100)
+        putInt(n50)
+        putInt(misses)
     }
 }

@@ -4,10 +4,10 @@ use bytes::BufMut;
 
 use java::Result;
 
+mod db;
 pub mod java;
 pub mod macros;
 mod pp;
-mod db;
 bitflags::bitflags! {
     struct StatusFlag :u8 {
         const Error = 0b10000000u8;
@@ -29,7 +29,9 @@ fn error_to_bytes(str: &str) -> Vec<u8> {
 fn vec_add_str(str: &str, vec: &mut dyn BufMut) {
     let bytes = str.as_bytes();
     vec.put_i32(bytes.len() as i32);
-    for b in bytes { vec.put_u8(*b); }
+    for b in bytes {
+        vec.put_u8(*b);
+    }
 }
 
 #[inline]
@@ -42,9 +44,7 @@ pub fn to_status_use<'l, T>(p: i64) -> Result<&'l mut T> {
     if point.is_null() || point as usize % mem::align_of::<T>() != 0 {
         return Err(format!("read pointer error: ({})", p).into());
     }
-    unsafe {
-        Ok(&mut *(p as *mut T))
-    }
+    unsafe { Ok(&mut *(p as *mut T)) }
 }
 #[inline]
 fn to_status<T>(p: i64) -> Result<Box<T>> {
@@ -52,7 +52,5 @@ fn to_status<T>(p: i64) -> Result<Box<T>> {
     if point.is_null() || point as usize % mem::align_of::<T>() != 0 {
         return Err(format!("read pointer error: ({})", p).into());
     }
-    unsafe {
-        Ok(Box::from_raw(point))
-    }
+    unsafe { Ok(Box::from_raw(point)) }
 }

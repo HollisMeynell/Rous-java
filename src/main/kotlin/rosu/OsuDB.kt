@@ -28,7 +28,7 @@ object OsuDB {
 
     internal fun toBytes(ptr: Long): ByteArray {
         val bytes = native.writeCollection(ptr)
-        return JniProcessor.readBytes(bytes)
+        return JniProcessor.readJniBytes(bytes)
     }
 
     internal fun addCollection(ptr: Long, name: String, hashes: Iterable<String>?) {

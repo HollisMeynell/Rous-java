@@ -4,7 +4,9 @@ import rosu.db.OsuCollection
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.createDirectories
 
 internal class Native private constructor() {
     companion object {
@@ -17,10 +19,16 @@ internal class Native private constructor() {
     }
 
     val loadLib by lazy {
+        System.getenv("ROSU_LIB_PATH")?.let {
+            if (Files.isRegularFile(Path(it))) {
+                System.load(it)
+                return@lazy
+            }
+        }
         val os: String = System.getProperty("os.name")
         val name = when {
             os.contains("windows", ignoreCase = true) -> "rosu_pp_java.dll"
-            os.contains("mac", ignoreCase = true) -> "rosu_pp_java.dylib"
+            os.contains("mac", ignoreCase = true) -> "librosu_pp_java.dylib"
             os.contains("linux", ignoreCase = true) -> "librosu_pp_java.so"
             else -> throw Error("Unsupported OS")
         }
@@ -29,18 +37,10 @@ internal class Native private constructor() {
             val tmpDirPath = Path.of(
                 System.getenv("ROSU_LIB_PATH") ?: (System.getProperty("java.io.tmpdir") + "/jlib")
             )
-            if (Files.isDirectory(tmpDirPath).not()) {
-                Files.createDirectory(tmpDirPath)
-            }
+            tmpDirPath.createDirectories()
             val f = tmpDirPath.resolve(name)
             Files.copy(it, f, StandardCopyOption.REPLACE_EXISTING)
-            Runtime.getRuntime().addShutdownHook(Thread {
-                try {
-                    Files.delete(f)
-                } catch (ignore: Exception) {
-
-                }
-            })
+            f.toFile().deleteOnExit()
             System.load(f.absolutePathString())
         }
     }
@@ -96,7 +96,7 @@ internal class Native private constructor() {
     @JvmName("setCollectionHash")
     external fun setCollectionHash(ptr: Long, index: Int, hashIndex: Int, hash: String): ByteArray
 
-        @JvmName("removeCollectionHash")
+    @JvmName("removeCollectionHash")
     external fun removeCollectionHash(ptr: Long, index: Int, hashIndex: Int): ByteArray
 
 }

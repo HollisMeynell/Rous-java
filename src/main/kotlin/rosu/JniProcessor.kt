@@ -6,11 +6,11 @@ import rosu.result.*
 import java.nio.ByteBuffer
 
 internal object JniProcessor {
-    const val ERROR: UByte = 0b10000000u
-    const val Osu: UByte = 0b00000001u
-    const val Taiko: UByte = 0b00000010u
-    const val Catch: UByte = 0b00000100u
-    const val Mania: UByte = 0b00001000u
+    private const val ERROR: UByte = 0b10000000u
+    private const val Osu: UByte = 0b00000001u
+    private const val Taiko: UByte = 0b00000010u
+    private const val Catch: UByte = 0b00000100u
+    private const val Mania: UByte = 0b00001000u
 
     @JvmStatic
     fun bytesToCalculate(bytes: ByteArray): JniCalculate {
@@ -22,7 +22,7 @@ internal object JniProcessor {
             Catch -> Mode.Catch
             Mania -> Mode.Mania
             ERROR -> {
-                throw Exception(readString(buffer))
+                throw Exception(buffer.readString())
             }
             else -> throw Exception("Unknown mode")
         }
@@ -82,7 +82,7 @@ internal object JniProcessor {
                 maniaResult
             }
             ERROR -> {
-                throw Exception(readString(buffer))
+                throw Exception(buffer.readString())
             }
             else -> throw Exception("Unknown mode")
         }
@@ -90,29 +90,19 @@ internal object JniProcessor {
         return result
     }
 
-    @JvmStatic
-    fun readString(buffer: ByteBuffer): String {
-        val length = buffer.getInt()
+    private fun ByteBuffer.readString(): String {
+        val length = int
         val bytes = ByteArray(length)
-        buffer.get(bytes)
+        get(bytes)
         return String(bytes)
     }
 
-    @JvmStatic
-    fun readPointer(bytes: ByteArray): Long {
-        val buffer = ByteBuffer.wrap(bytes)
-        if (ERROR == buffer.get().toUByte()) {
-            throw Exception(readString(buffer))
+    fun readJniBytes(bytes: ByteArray): ByteArray = bytes.apply {
+        if (isEmpty()) throw Exception("Empty bytes")
+        val data = slice(1..<size).toByteArray()
+        if (get(0).toUByte() == ERROR) {
+            throw Exception(ByteBuffer.wrap(data).readString())
         }
-        return buffer.getLong()
-    }
-
-    @JvmStatic
-    fun readBytes(bytes: ByteArray): ByteArray {
-        val buffer = ByteBuffer.wrap(bytes)
-        if (ERROR == buffer.get().toUByte()) {
-            throw Exception(readString(buffer))
-        }
-        return bytes.slice(1..<bytes.size).toByteArray()
+        return data
     }
 }

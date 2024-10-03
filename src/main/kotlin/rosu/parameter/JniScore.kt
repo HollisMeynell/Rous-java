@@ -1,7 +1,6 @@
 package rosu.parameter
 
 import rosu.osu.Mode
-import java.nio.ByteBuffer
 
 @Suppress("unused")
 data class JniScore(
@@ -29,11 +28,9 @@ data class JniScore(
     )
 
     override fun size() = attr.size() + state.size()
-    override fun toBytes(): ByteArray {
-        val buffer = ByteBuffer.allocate(size())
-        buffer.put(attr.toBytes())
-        buffer.put(state.toBytes())
-        return buffer.array()
+    override fun toBytes() = buffer {
+        put(attr.toBytes())
+        put(state.toBytes())
     }
 
     var mode: Mode by attr::mode

@@ -4,14 +4,14 @@ import rosu.OsuDB
 import rosu.db.OsuCollection.CollectionItem
 
 @Suppress("unused")
-class OsuCollection internal constructor() : AutoCloseable, Iterable<CollectionItem>,
-    java.util.Iterator<CollectionItem> {
+class OsuCollection internal constructor()
+    : AutoCloseable, Iterable<CollectionItem>, MutableIterator<CollectionItem> {
     var version: Int = 0
         internal set
     private var items = mutableListOf<CollectionItem>()
     private var ptr: Long? = null
 
-    fun getPtr(): Long {
+    private fun getPtr(): Long {
         return ptr ?: throw Error("Collection is released")
     }
 
@@ -95,8 +95,8 @@ class OsuCollection internal constructor() : AutoCloseable, Iterable<CollectionI
         private val hashes: ArrayList<String>,
         private val index: Int,
         private val collection: OsuCollection,
-    ) : Iterable<String>, java.util.Iterator<String> {
-        var name = name
+    ) : Iterable<String>, MutableIterator<String> {
+        private var name = name
             set(value) {
                 field = value
                 collection.setCollectionName(index, name)
@@ -192,6 +192,7 @@ class OsuCollection internal constructor() : AutoCloseable, Iterable<CollectionI
     }
 
     private val iterator by lazy { items.iterator() }
+
     /**
      * Returns `true` if the iteration has more elements.
      * (In other words, returns `true` if [.next] would
