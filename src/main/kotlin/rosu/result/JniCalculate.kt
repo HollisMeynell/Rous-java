@@ -5,14 +5,19 @@ import rosu.osu.Mode
 import rosu.parameter.JniMapAttr
 import rosu.parameter.JniScore
 import rosu.parameter.JniScoreState
+import java.lang.ref.Cleaner
 
-class JniCalculate (
+class JniCalculate(
     pointer: Long,
     val mode: Mode,
     val mods: Int,
     val score: JniScoreState
-) : AutoCloseable{
-    private var ptr:Long? = pointer
+) : AutoCloseable {
+    private var ptr: Long = pointer
+    private var closed = false
+    private val cleaner = CLEANER.register(this) {
+        Rosu.releaseCalculate(ptr)
+    }
 
     fun getJniScore(): JniScore {
         return JniScore(
@@ -25,12 +30,17 @@ class JniCalculate (
     }
 
     override fun close() {
-        if (ptr == null) return
-        Rosu.releaseCalculate(this.ptr!!)
+        if (closed)  return
+        closed = true
+        cleaner.clean()
     }
 
     fun calculate(): JniResult {
-        if (ptr == null) throw Error("Calculate is released")
-        return Rosu.calculate(this.ptr!!, this.getJniScore().toBytes())
+        if (closed) throw Error("Calculate is released")
+        return Rosu.calculate(this.ptr, this.getJniScore().toBytes())
+    }
+
+    private companion object {
+        private val CLEANER = Cleaner.create()
     }
 }

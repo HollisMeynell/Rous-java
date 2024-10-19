@@ -2,21 +2,21 @@ package rosu.db
 
 import rosu.OsuDB
 import rosu.db.OsuCollection.CollectionItem
+import java.lang.ref.Cleaner
+import kotlin.properties.Delegates
 
 @Suppress("unused")
-class OsuCollection internal constructor()
-    : AutoCloseable, Iterable<CollectionItem>, MutableIterator<CollectionItem> {
+class OsuCollection internal constructor() : AutoCloseable, Iterable<CollectionItem>, MutableIterator<CollectionItem> {
     var version: Int = 0
         internal set
     private var items = mutableListOf<CollectionItem>()
-    private var ptr: Long? = null
-
-    private fun getPtr(): Long {
-        return ptr ?: throw Error("Collection is released")
-    }
-
-    internal fun setPtr(l: Long) {
-        ptr = l
+    private var ptr = 0L
+        get() {
+            if (field == 0L) throw IllegalAccessException("Collection is released or not ready")
+            return field
+        }
+    private var cleaner = CLEANER.register(this) {
+        OsuDB.releaseCollectionList(ptr)
     }
 
     internal fun setCollections(data: String) {
@@ -38,7 +38,7 @@ class OsuCollection internal constructor()
         val item = CollectionItem(
             name, hashed.toCollection(ArrayList()), items.size, this
         )
-        OsuDB.addCollection(getPtr(), name, hashed)
+        OsuDB.addCollection(ptr, name, hashed)
         items.add(item)
         return item
     }
@@ -47,47 +47,47 @@ class OsuCollection internal constructor()
         val item = CollectionItem(
             name, ArrayList(), items.size, this
         )
-        OsuDB.addCollection(getPtr(), name)
+        OsuDB.addCollection(ptr, name)
         items.add(item)
         return item
     }
 
     internal fun removeCollection(index: Int) {
         if (index !in items.indices) return
-        OsuDB.removeCollection(getPtr(), index)
+        OsuDB.removeCollection(ptr, index)
         items.removeAt(index)
     }
 
     internal fun clearCollections(index: Int) {
-        OsuDB.clearCollection(getPtr(), index)
+        OsuDB.clearCollection(ptr, index)
     }
 
     internal fun addAllHash(index: Int, hash: Iterable<String>) {
-        OsuDB.addAllCollectionHash(getPtr(), index, hash)
+        OsuDB.addAllCollectionHash(ptr, index, hash)
     }
 
     internal fun setCollectionName(index: Int, name: String) {
-        OsuDB.setCollectionName(getPtr(), index, name)
+        OsuDB.setCollectionName(ptr, index, name)
     }
 
     internal fun appendHash(index: Int, hash: String) {
-        OsuDB.appendCollectionHash(getPtr(), index, hash)
+        OsuDB.appendCollectionHash(ptr, index, hash)
     }
 
     internal fun insertHash(index: Int, hashIndex: Int, hash: String) {
-        OsuDB.insertCollectionHash(getPtr(), index, hashIndex, hash)
+        OsuDB.insertCollectionHash(ptr, index, hashIndex, hash)
     }
 
     internal fun setHash(index: Int, hashIndex: Int, hash: String) {
-        OsuDB.setCollectionHash(getPtr(), index, hashIndex, hash)
+        OsuDB.setCollectionHash(ptr, index, hashIndex, hash)
     }
 
     internal fun removeHash(index: Int, hashIndex: Int) {
-        OsuDB.removeCollectionHash(getPtr(), index, hashIndex)
+        OsuDB.removeCollectionHash(ptr, index, hashIndex)
     }
 
     fun toBytes(): ByteArray {
-        return OsuDB.toBytes(getPtr())
+        return OsuDB.toBytes(ptr)
     }
 
     class CollectionItem(
@@ -178,37 +178,28 @@ class OsuCollection internal constructor()
     }
 
     override fun close() {
-        if (ptr != null) {
-            OsuDB.releaseCollectionList(ptr!!)
-            ptr = null
+        try {
+            ptr
+        } catch (e: IllegalAccessException) {
+            return
         }
+        cleaner.clean()
+        ptr = 0
     }
 
-    /**
-     * Returns an iterator over the elements of this object.
-     */
     override fun iterator(): Iterator<CollectionItem> {
         return items.iterator()
     }
 
     private val iterator by lazy { items.iterator() }
 
-    /**
-     * Returns `true` if the iteration has more elements.
-     * (In other words, returns `true` if [.next] would
-     * return an element rather than throwing an exception.)
-     *
-     * @return `true` if the iteration has more elements
-     */
     override fun hasNext() = this.iterator.hasNext()
 
-    /**
-     * Returns the next element in the iteration.
-     *
-     * @return the next element in the iteration
-     * @throws NoSuchElementException if the iteration has no more elements
-     */
     override fun next() = iterator.next()
 
     override fun remove() = iterator.remove()
+
+    private companion object {
+        private val CLEANER = Cleaner.create()
+    }
 }

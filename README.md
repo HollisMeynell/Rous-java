@@ -12,6 +12,7 @@
 详见下方编译**
 
 ## 使用
+** 已经优化在回收的对象持有 native 指针时, 但是仍然建议使用`try-with-resources`来主动回收 **
 > kotlin 代码
 ```kotlin
 
@@ -36,7 +37,7 @@ r = Rosu.calculate(
 
 // 渐进计算
 val cal = Rosu.getCalculate(f, JniMapAttr())
-// java 请使用 try-with-resources, 或者手动调用 .close() 释放 Calculate, 否则会导致内存泄漏
+
 cal.use { c ->
     for (i in 0 until 1270) {
         c.score.n300 += 1
