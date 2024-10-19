@@ -1,5 +1,3 @@
-use std::mem;
-
 use bytes::BufMut;
 
 use java::Result;
@@ -41,16 +39,22 @@ pub(crate) fn to_ptr<T>(s: T) -> i64 {
 #[inline]
 pub fn to_status_use<'l, T>(p: i64) -> Result<&'l mut T> {
     let point = p as *mut T;
-    if point.is_null() || point as usize % mem::align_of::<T>() != 0 {
-        return Err(format!("read pointer error: ({})", p).into());
+    unsafe {
+        if let Some(status_ref) = point.as_mut() {
+            Ok(status_ref)
+        } else {
+            Err(format!("read pointer error: ({})", p).into())
+        }
     }
-    unsafe { Ok(&mut *(p as *mut T)) }
 }
 #[inline]
 fn to_status<T>(p: i64) -> Result<Box<T>> {
     let point = p as *mut T;
-    if point.is_null() || point as usize % mem::align_of::<T>() != 0 {
-        return Err(format!("read pointer error: ({})", p).into());
+    unsafe {
+        if let None = point.as_ref() {
+            Err(format!("read pointer error: ({})", p).into())
+        } else {
+            Ok(Box::from_raw(point))
+        }
     }
-    unsafe { Ok(Box::from_raw(point)) }
 }
