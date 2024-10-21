@@ -1,3 +1,4 @@
+use std::ops::Not;
 use bytes::BufMut;
 
 use java::Result;
@@ -36,20 +37,29 @@ fn vec_add_str(str: &str, vec: &mut dyn BufMut) {
 pub(crate) fn to_ptr<T>(s: T) -> i64 {
     Box::into_raw(Box::new(s)) as i64
 }
+
 #[inline]
-pub fn to_status_use<'l, T>(p: i64) -> Result<&'l mut T> {
+fn check_ptr<T>(point: *mut T) -> Result<()>{
+    if point.is_null() || point.is_aligned().not() {
+        return Err("point is null or not".into());
+    }
+    Ok(())
+}
+
+#[inline]
+pub fn to_status_use<T>(p: i64) -> Result<&'static mut T> {
     let point = p as *mut T;
+    check_ptr(point)?;
     unsafe {
-        if let Some(status_ref) = point.as_mut() {
-            Ok(status_ref)
-        } else {
-            Err(format!("read pointer error: ({})", p).into())
-        }
+        point.as_mut()
+            .ok_or_else(|| format!("read pointer error: ({})", p).into())
     }
 }
+
 #[inline]
 fn to_status<T>(p: i64) -> Result<Box<T>> {
     let point = p as *mut T;
+    check_ptr(point)?;
     unsafe {
         if let None = point.as_ref() {
             Err(format!("read pointer error: ({})", p).into())

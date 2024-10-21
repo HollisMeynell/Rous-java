@@ -7,4 +7,9 @@ interface JniResult {
     var pp: Double
     var star: Double
     var combo: Int
+
+    var ar: Double
+    var od: Double
+    var cs: Double
+    var hp: Double
 }

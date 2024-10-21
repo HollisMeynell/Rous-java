@@ -27,14 +27,36 @@ internal object JniProcessor {
             else -> throw Exception("Unknown mode")
         }
         val mods = buffer.int
+        val ar = buffer.double
+        val od = buffer.double
+        val cs = buffer.double
+        val hp = buffer.double
         val ptr = buffer.long
         val result = JniCalculate(
             pointer = ptr,
             mode = mode,
             mods = mods,
-            score = JniScoreState()
+            score = JniScoreState(),
+            ar = ar,
+            od = od,
+            cs = cs,
+            hp = hp,
         )
         return result
+    }
+
+    private fun JniResult.readPublic(buffer:ByteBuffer) {
+        pp = buffer.double
+        star = buffer.double
+        combo = buffer.int
+        val b = buffer.get()
+        if (b == 1.toByte()) {
+            ar = buffer.double
+            od = buffer.double
+            cs = buffer.double
+            hp = buffer.double
+        }
+
     }
 
     @JvmStatic
@@ -45,9 +67,7 @@ internal object JniProcessor {
         val result: JniResult = when (head) {
             Osu -> {
                 val osuResult = OsuResult()
-                osuResult.pp = buffer.double
-                osuResult.star = buffer.double
-                osuResult.combo = buffer.int
+                osuResult.readPublic(buffer)
 
                 osuResult.ppAcc = buffer.double
                 osuResult.ppAim = buffer.double
@@ -57,9 +77,7 @@ internal object JniProcessor {
             }
             Taiko -> {
                 val taikoResult = TaikoResult()
-                taikoResult.pp = buffer.double
-                taikoResult.star = buffer.double
-                taikoResult.combo = buffer.int
+                taikoResult.readPublic(buffer)
 
                 taikoResult.ppAcc = buffer.getDouble()
                 taikoResult.ppDifficulty = buffer.getDouble()
@@ -67,16 +85,13 @@ internal object JniProcessor {
             }
             Catch -> {
                 val catchResult = CatchResult()
-                catchResult.pp = buffer.double
-                catchResult.star = buffer.double
-                catchResult.combo = buffer.int
+                catchResult.readPublic(buffer)
+
                 catchResult
             }
             Mania -> {
                 val maniaResult = ManiaResult()
-                maniaResult.pp = buffer.double
-                maniaResult.star = buffer.double
-                maniaResult.combo = buffer.int
+                maniaResult.readPublic(buffer)
 
                 maniaResult.ppDifficulty = buffer.double
                 maniaResult

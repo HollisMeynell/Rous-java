@@ -8,6 +8,11 @@ class CatchResult : JniResult {
     override var star: Double = 0.0
     override var combo: Int = 0
 
+    override var ar: Double = 0.0
+    override var od: Double = 0.0
+    override var cs: Double = 0.0
+    override var hp: Double = 0.0
+
     override fun toString(): String {
         return "CatchResult(mode=$mode, pp=$pp, star=$star, combo=$combo)"
     }

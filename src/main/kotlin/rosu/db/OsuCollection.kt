@@ -3,7 +3,6 @@ package rosu.db
 import rosu.OsuDB
 import rosu.db.OsuCollection.CollectionItem
 import java.lang.ref.Cleaner
-import kotlin.properties.Delegates
 
 @Suppress("unused")
 class OsuCollection internal constructor() : AutoCloseable, Iterable<CollectionItem>, MutableIterator<CollectionItem> {

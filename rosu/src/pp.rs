@@ -1,73 +1,139 @@
+use crate::java::{Error, Result};
+use crate::{to_ptr, to_status_use, StatusFlag};
 use bytes::{Buf, BufMut, Bytes};
 use jni::objects::JByteArray;
 use jni::JNIEnv;
-use rosu_pp::any::{DifficultyAttributes, PerformanceAttributes, ScoreState};
+use rosu_pp::any::{PerformanceAttributes, ScoreState};
 use rosu_pp::model::mode::GameMode;
 use rosu_pp::{Beatmap, Difficulty, GradualPerformance, Performance};
-
-use crate::java::{Error, Result};
-use crate::{to_ptr, to_status_use, StatusFlag};
+use std::ops::Not;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct JniMapAttr {
-    pub mode: Option<GameMode>,
-    pub mods: u32,
-    pub speed: f64,
-    pub accuracy: f64,
+pub struct JniMapAttributes {
+    pub ar: f64,
+    pub od: f64,
+    pub cs: f64,
+    pub hp: f64,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct JniScore {
-    pub attr: JniMapAttr,
-    pub score: Option<ScoreState>,
-}
-
-impl JniScore {
-    pub fn performance<'a>(self, attr: DifficultyAttributes) -> Performance<'a> {
-        let max_combo = attr.max_combo();
-        let mut p = Performance::new(attr);
-        p = p.mods(self.attr.mods);
-
-        if !self.attr.accuracy.is_zero() {
-            p = p.accuracy(self.attr.accuracy);
-        }
-
-        if let Some(mut s) = self.score {
-            if s.max_combo == 0 {
-                s.max_combo = max_combo;
-            }
-            if s.n300 > 0 {
-                p = p.n300(s.n300)
-            }
-            if s.n100 > 0 {
-                p = p.n100(s.n100)
-            }
-            if s.n50 > 0 {
-                p = p.n50(s.n50)
-            }
-            if s.n_geki > 0 {
-                p = p.n_geki(s.n_geki)
-            }
-            if s.n_katu > 0 {
-                p = p.n_katu(s.n_katu)
-            }
-            if s.misses > 0 {
-                p = p.misses(s.misses)
-            }
-            p.combo(s.max_combo)
+impl JniMapAttributes {
+    fn to_data(self) -> Option<Self> {
+        if self.ar < -20f64 && self.od < -20f64 && self.cs < -20f64 && self.hp < -20f64 {
+            None
         } else {
-            p.combo(max_combo)
+            Some(self)
+        }
+    }
+
+    #[inline]
+    fn set_map_attr<T>(val: f64, s: T, action: impl FnOnce(T, f32, bool) -> T) -> T {
+        if val >= -20.0 {
+            action(s, val as f32, true)
+        } else {
+            s
         }
     }
 }
 
-impl Default for JniMapAttr {
+impl From<&Beatmap> for JniMapAttributes {
+    fn from(value: &Beatmap) -> Self {
+        Self {
+            ar: value.ar as f64,
+            od: value.od as f64,
+            cs: value.cs as f64,
+            hp: value.hp as f64,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct JniAttributes {
+    pub mode: Option<GameMode>,
+    pub mods: u32,
+    pub speed: f64,
+    pub accuracy: f64,
+    pub map_attr: Option<JniMapAttributes>,
+}
+
+impl JniAttributes {
+    pub fn mem_size() -> usize {
+        21 + 32
+    }
+
+    pub fn difficulty(&self) -> Difficulty {
+        let mut difficulty = Difficulty::new()
+            .mods(self.mods);
+        if let Some(map_attr) = &self.map_attr {
+            difficulty = JniMapAttributes::set_map_attr(map_attr.ar, difficulty, Difficulty::ar);
+            difficulty = JniMapAttributes::set_map_attr(map_attr.od, difficulty, Difficulty::od);
+            difficulty = JniMapAttributes::set_map_attr(map_attr.cs, difficulty, Difficulty::cs);
+            difficulty = JniMapAttributes::set_map_attr(map_attr.hp, difficulty, Difficulty::hp);
+        }
+
+        if self.speed > 0f64 {
+            difficulty = difficulty.clock_rate(self.speed)
+        }
+
+        difficulty
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct JniScore {
+    pub attr: JniAttributes,
+    pub score: Option<ScoreState>,
+}
+
+impl JniScore {
+    pub fn mem_size() -> usize {
+        JniAttributes::mem_size() + 7 * 4
+    }
+
+    fn set_score_state<T>(value: u32, o: T, action: impl FnOnce(T, u32) -> T) -> T {
+        if value > 0 {
+            action(o, value)
+        } else {
+            o
+        }
+    }
+
+    pub fn performance(self, map: Beatmap) -> Performance<'static> {
+        let attributes = self.attr.difficulty().calculate(&map);
+
+        let max_combo = attributes.max_combo();
+
+        let mut performance = Performance::new(attributes);
+
+        performance = performance.combo(max_combo);
+
+        performance = performance.mods(self.attr.mods);
+
+        if self.attr.accuracy.is_zero().not() {
+            performance = performance.accuracy(self.attr.accuracy);
+        }
+
+        if let Some(s) = self.score {
+            performance = JniScore::set_score_state(s.n300, performance, Performance::n300);
+            performance = JniScore::set_score_state(s.n100, performance, Performance::n100);
+            performance = JniScore::set_score_state(s.n50, performance, Performance::n50);
+            performance = JniScore::set_score_state(s.n_geki, performance, Performance::n_geki);
+            performance = JniScore::set_score_state(s.n_katu, performance, Performance::n_katu);
+            performance = JniScore::set_score_state(s.misses, performance, Performance::misses);
+            performance = JniScore::set_score_state(s.max_combo, performance, Performance::combo);
+        }
+
+        performance
+    }
+}
+
+impl Default for JniAttributes {
     fn default() -> Self {
-        JniMapAttr {
+        JniAttributes {
             mode: None,
             mods: 0,
             speed: 0.0,
             accuracy: 0.0,
+            map_attr: None,
         }
     }
 }
@@ -75,16 +141,16 @@ impl Default for JniMapAttr {
 impl Default for JniScore {
     fn default() -> Self {
         JniScore {
-            attr: JniMapAttr::default(),
+            attr: JniAttributes::default(),
             score: None,
         }
     }
 }
 
-impl From<&[u8]> for JniMapAttr {
+impl From<&[u8]> for JniAttributes {
     fn from(value: &[u8]) -> Self {
-        if value.len() < 21 {
-            return JniMapAttr::default();
+        if value.len() < JniAttributes::mem_size() {
+            return JniAttributes::default();
         }
 
         let mut bytes = Bytes::copy_from_slice(value);
@@ -102,11 +168,20 @@ impl From<&[u8]> for JniMapAttr {
         } else if accuracy < 1.001f64 {
             accuracy *= 100f64;
         }
-        JniMapAttr {
+
+        let ar = bytes.get_f64();
+        let od = bytes.get_f64();
+        let cs = bytes.get_f64();
+        let hp = bytes.get_f64();
+
+        let map_attr = JniMapAttributes { ar, od, cs, hp };
+
+        JniAttributes {
             mode,
             mods,
             speed,
             accuracy,
+            map_attr: map_attr.to_data(),
         }
     }
 }
@@ -114,17 +189,20 @@ impl From<&[u8]> for JniMapAttr {
 impl From<&[u8]> for JniScore {
     fn from(value: &[u8]) -> Self {
         let length = value.len();
-        if length < 21 {
+        if length < JniAttributes::mem_size() {
             return JniScore::default();
         }
 
-        let attr = JniMapAttr::from(&value[0..21]);
+        let attr_size = JniAttributes::mem_size();
+        let score_size = JniScore::mem_size();
 
-        if length < 49 {
+        let attr = JniAttributes::from(&value[0..attr_size]);
+
+        if length < score_size {
             return JniScore { attr, score: None };
         }
 
-        let bytes = Bytes::copy_from_slice(&value[21..49]);
+        let bytes = Bytes::copy_from_slice(&value[attr_size..score_size]);
 
         let score = bytes_to_score_state(bytes);
 
@@ -152,17 +230,10 @@ impl TestZero for f64 {
 /// - mania: `[(pp_difficulty)f64]`
 pub fn calculate(env: &JNIEnv, local_map: &JByteArray, score: &JByteArray) -> Result<Vec<u8>> {
     let (map, score) = get_map_and_score(env, local_map, score)?;
-
-    let difficulty = Difficulty::new().mods(score.attr.mods);
-    let attributes = if score.attr.speed > 0.0 {
-        difficulty.clock_rate(score.attr.speed).calculate(&map)
-    } else {
-        difficulty.calculate(&map)
-    };
-
-    let performance = score.performance(attributes);
+    let map_attr = JniMapAttributes::from(&map);
+    let performance = score.performance(map);
     let mut result = Vec::<u8>::new();
-    attr_to_bytes(&performance.calculate(), &mut result);
+    attr_to_bytes(&performance.calculate(), Some(&map_attr), &mut result);
     Ok(result)
 }
 
@@ -174,17 +245,14 @@ pub fn calculate(env: &JNIEnv, local_map: &JByteArray, score: &JByteArray) -> Re
 pub fn get_calculate(env: &JNIEnv, local_map: &JByteArray, attr: &JByteArray) -> Result<Vec<u8>> {
     let (map, attr) = get_map_and_attr(env, local_map, attr)?;
     let mode = map.mode;
+    let map_attr = JniMapAttributes::from(&map);
     let mods = attr.mods;
-    let difficulty = Difficulty::new().mods(mods);
-    let gradual = if attr.speed > 0.0 {
-        difficulty.clock_rate(attr.speed).gradual_performance(&map)
-    } else {
-        difficulty.gradual_performance(&map)
-    };
+
+    let gradual = attr.difficulty().gradual_performance(&map);
 
     let ptr = to_ptr(gradual);
     let mut result = Vec::<u8>::new();
-    calculate_to_bytes(ptr, mode, mods, &mut result);
+    calculate_to_bytes(ptr, mode, &map_attr, mods, &mut result);
     Ok(result)
 }
 
@@ -207,7 +275,7 @@ pub fn calculate_pp(env: &JNIEnv, ptr: i64, score: &JByteArray) -> Result<Vec<u8
     let attr = attr.unwrap();
 
     let mut result = Vec::<u8>::new();
-    attr_to_bytes(&attr, &mut result);
+    attr_to_bytes(&attr, None, &mut result);
 
     Ok(result)
 }
@@ -233,7 +301,7 @@ fn get_map_and_attr(
     env: &JNIEnv,
     local_map: &JByteArray,
     attr: &JByteArray,
-) -> Result<(Beatmap, JniMapAttr)> {
+) -> Result<(Beatmap, JniAttributes)> {
     let mut map = get_map(env, local_map)?;
     let attr = get_map_attr(env, attr)?;
 
@@ -250,9 +318,9 @@ fn get_map(env: &JNIEnv, local_map: &JByteArray) -> Result<Beatmap> {
     Ok(map)
 }
 
-fn get_map_attr(env: &JNIEnv, attr: &JByteArray) -> Result<JniMapAttr> {
+fn get_map_attr(env: &JNIEnv, attr: &JByteArray) -> Result<JniAttributes> {
     let attr_bytes = env.convert_byte_array(attr)?;
-    let attr = JniMapAttr::from(attr_bytes.as_slice());
+    let attr = JniAttributes::from(attr_bytes.as_slice());
     Ok(attr)
 }
 
@@ -271,24 +339,38 @@ fn bytes_to_score_state(mut bytes: Bytes) -> ScoreState {
     let n50 = bytes.get_i32() as u32;
     let misses = bytes.get_i32() as u32;
 
-    ScoreState {
-        max_combo,
-        n_geki,
-        n_katu,
-        n300,
-        n100,
-        n50,
-        misses,
-    }
+    ScoreState { max_combo, n_geki, n_katu, n300, n100, n50, misses }
 }
 
-fn attr_to_bytes(attr: &PerformanceAttributes, result: &mut dyn BufMut) {
+#[inline]
+fn set_attr(
+    attr: &PerformanceAttributes,
+    map_attr: Option<&JniMapAttributes>,
+    result: &mut dyn BufMut,
+) {
+    result.put_f64(attr.pp());
+    result.put_f64(attr.stars());
+    result.put_i32(attr.max_combo() as i32);
+
+    if let Some(attr) = map_attr {
+        result.put_i8(1);
+        result.put_f64(attr.ar);
+        result.put_f64(attr.od);
+        result.put_f64(attr.cs);
+        result.put_f64(attr.hp);
+    } else {
+        result.put_i8(0);
+    }
+}
+fn attr_to_bytes(
+    attr: &PerformanceAttributes,
+    map_attr: Option<&JniMapAttributes>,
+    result: &mut dyn BufMut,
+) {
     match attr {
         PerformanceAttributes::Osu(data) => {
             result.put_u8(StatusFlag::Osu.bits());
-            result.put_f64(data.pp());
-            result.put_f64(data.stars());
-            result.put_i32(data.max_combo() as i32);
+            set_attr(attr, map_attr, result);
 
             result.put_f64(data.pp_acc);
             result.put_f64(data.pp_aim);
@@ -297,31 +379,31 @@ fn attr_to_bytes(attr: &PerformanceAttributes, result: &mut dyn BufMut) {
         }
         PerformanceAttributes::Taiko(data) => {
             result.put_u8(StatusFlag::Taiko.bits());
-            result.put_f64(data.pp());
-            result.put_f64(data.stars());
-            result.put_i32(data.max_combo() as i32);
+            set_attr(attr, map_attr, result);
 
             result.put_f64(data.pp_acc);
             result.put_f64(data.pp_difficulty);
         }
-        PerformanceAttributes::Catch(data) => {
+        PerformanceAttributes::Catch(_) => {
             result.put_u8(StatusFlag::Catch.bits());
-            result.put_f64(data.pp());
-            result.put_f64(data.stars());
-            result.put_i32(data.max_combo() as i32);
+            set_attr(attr, map_attr, result);
         }
         PerformanceAttributes::Mania(data) => {
             result.put_u8(StatusFlag::Mania.bits());
-            result.put_f64(data.pp());
-            result.put_f64(data.stars());
-            result.put_i32(data.max_combo() as i32);
+            set_attr(attr, map_attr, result);
 
             result.put_f64(data.pp_difficulty);
         }
     }
 }
 
-fn calculate_to_bytes(ptr: i64, mode: GameMode, mods: u32, result: &mut dyn BufMut) {
+fn calculate_to_bytes(
+    ptr: i64,
+    mode: GameMode,
+    map_attr: &JniMapAttributes,
+    mods: u32,
+    result: &mut dyn BufMut,
+) {
     let head = match mode {
         GameMode::Osu => StatusFlag::Osu,
         GameMode::Taiko => StatusFlag::Taiko,
@@ -330,5 +412,9 @@ fn calculate_to_bytes(ptr: i64, mode: GameMode, mods: u32, result: &mut dyn BufM
     };
     result.put_u8(head.bits());
     result.put_i32(mods as i32);
+    result.put_f64(map_attr.ar);
+    result.put_f64(map_attr.od);
+    result.put_f64(map_attr.cs);
+    result.put_f64(map_attr.hp);
     result.put_i64(ptr);
 }

@@ -8,6 +8,11 @@ class OsuResult : JniResult {
     override var star: Double = 0.0
     override var combo: Int = 0
 
+    override var ar: Double = 0.0
+    override var od: Double = 0.0
+    override var cs: Double = 0.0
+    override var hp: Double = 0.0
+
     var ppAcc: Double = 0.0
     var ppAim: Double = 0.0
     var ppFlashlight: Double = 0.0

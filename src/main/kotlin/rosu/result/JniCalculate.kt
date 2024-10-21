@@ -7,10 +7,21 @@ import rosu.parameter.JniScore
 import rosu.parameter.JniScoreState
 import java.lang.ref.Cleaner
 
+/**
+ * @param ar from beatmap, mods do not affect
+ * @param od from beatmap, mods do not affect
+ * @param cs from beatmap, mods do not affect
+ * @param hp from beatmap, mods do not affect
+ */
 class JniCalculate(
     pointer: Long,
     val mode: Mode,
     val mods: Int,
+
+    val ar: Double = 0.0,
+    val od: Double = 0.0,
+    val cs: Double = 0.0,
+    val hp: Double = 0.0,
     val score: JniScoreState
 ) : AutoCloseable {
     private var ptr: Long = pointer

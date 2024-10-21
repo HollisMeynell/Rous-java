@@ -55,4 +55,11 @@ data class JniScore(
 
     var misses: Int by state::misses
 
+    var ar by attr::ar
+
+    var od by attr::od
+
+    var cs by attr::cs
+
+    var hp by attr::hp
 }
