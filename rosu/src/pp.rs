@@ -86,7 +86,7 @@ pub struct JniScore {
 
 impl JniScore {
     pub fn mem_size() -> usize {
-        JniAttributes::mem_size() + 7 * 4
+        JniAttributes::mem_size() + 4 * 9
     }
 
     fn set_score_state<T>(value: u32, o: T, action: impl FnOnce(T, u32) -> T) -> T {
@@ -100,11 +100,7 @@ impl JniScore {
     pub fn performance(self, map: Beatmap) -> Performance<'static> {
         let attributes = self.attr.difficulty().calculate(&map);
 
-        let max_combo = attributes.max_combo();
-
         let mut performance = Performance::new(attributes);
-
-        performance = performance.combo(max_combo);
 
         performance = performance.mods(self.attr.mods);
 
@@ -113,13 +109,19 @@ impl JniScore {
         }
 
         if let Some(s) = self.score {
-            performance = JniScore::set_score_state(s.n300, performance, Performance::n300);
-            performance = JniScore::set_score_state(s.n100, performance, Performance::n100);
-            performance = JniScore::set_score_state(s.n50, performance, Performance::n50);
-            performance = JniScore::set_score_state(s.n_geki, performance, Performance::n_geki);
-            performance = JniScore::set_score_state(s.n_katu, performance, Performance::n_katu);
-            performance = JniScore::set_score_state(s.misses, performance, Performance::misses);
-            performance = JniScore::set_score_state(s.max_combo, performance, Performance::combo);
+            let mut default_state = performance.generate_state();
+
+            set_state(s.n_geki, &mut default_state, |a, b| { a.n_geki = b });
+            set_state(s.n_katu, &mut default_state, |a, b| { a.n_katu = b });
+            set_state(s.slider_tick_hits, &mut default_state, |a, b| { a.slider_tick_hits = b });
+            set_state(s.slider_end_hits, &mut default_state, |a, b| { a.slider_end_hits = b });
+            set_state(s.n300, &mut default_state, |a, b| { a.n300 = b });
+            set_state(s.n100, &mut default_state, |a, b| { a.n100 = b });
+            set_state(s.n50, &mut default_state, |a, b| { a.n50 = b });
+            set_state(s.misses, &mut default_state, |a, b| { a.misses = b });
+            set_state(s.max_combo, &mut default_state, |a, b| { a.max_combo = b });
+
+            performance = performance.state(default_state)
         }
 
         performance
@@ -263,11 +265,11 @@ pub fn get_calculate(env: &JNIEnv, local_map: &JByteArray, attr: &JByteArray) ->
 /// 返回值与 [`calculate`] 相同
 pub fn calculate_pp(env: &JNIEnv, ptr: i64, score: &JByteArray) -> Result<Vec<u8>> {
     let gradual = to_status_use::<GradualPerformance>(ptr)?;
-    let score = get_score(env, score)?;
+    let mut score = get_score(env, score)?;
     if score.score.is_none() {
         return Err(Error::from("no score"));
     }
-    let state = score.score.as_ref().unwrap();
+    let state = score.score.take().unwrap();
     let attr = gradual.next(state.clone());
     if attr.is_none() {
         return Err(Error::from("gradual error"));
@@ -331,6 +333,8 @@ fn get_score(env: &JNIEnv, score: &JByteArray) -> Result<JniScore> {
 }
 
 fn bytes_to_score_state(mut bytes: Bytes) -> ScoreState {
+    let slider_tick_hits = bytes.get_i32() as u32;
+    let slider_end_hits = bytes.get_i32() as u32;
     let max_combo = bytes.get_i32() as u32;
     let n_geki = bytes.get_i32() as u32;
     let n_katu = bytes.get_i32() as u32;
@@ -339,7 +343,7 @@ fn bytes_to_score_state(mut bytes: Bytes) -> ScoreState {
     let n50 = bytes.get_i32() as u32;
     let misses = bytes.get_i32() as u32;
 
-    ScoreState { max_combo, n_geki, n_katu, n300, n100, n50, misses }
+    ScoreState { max_combo, slider_tick_hits, slider_end_hits, n_geki, n_katu, n300, n100, n50, misses }
 }
 
 #[inline]
@@ -417,4 +421,11 @@ fn calculate_to_bytes(
     result.put_f64(map_attr.cs);
     result.put_f64(map_attr.hp);
     result.put_i64(ptr);
+}
+
+#[inline]
+fn set_state(n: u32, state: &mut ScoreState, fx: fn(&mut ScoreState, u32)) {
+    if n > 0 {
+        fx(state, n);
+    };
 }

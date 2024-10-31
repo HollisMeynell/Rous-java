@@ -43,6 +43,10 @@ data class JniScore(
 
     var combo: Int by state::combo
 
+    var sliderTicks: Int by state::sliderTicks
+
+    var sliderEnds: Int by state::sliderEnds
+
     var geki: Int by state::geki
 
     var katu: Int by state::katu

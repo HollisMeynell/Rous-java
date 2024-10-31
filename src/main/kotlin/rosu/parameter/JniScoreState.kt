@@ -1,6 +1,8 @@
 package rosu.parameter
 
 data class JniScoreState(
+    var sliderTicks: Int = 0,
+    var sliderEnds: Int = 0,
     var combo: Int = 0,
     var geki: Int = 0,
     var katu: Int = 0,
@@ -10,7 +12,9 @@ data class JniScoreState(
     var misses: Int = 0,
 ) : Parameter {
     fun isEmpty(): Boolean {
-        return combo == 0 &&
+        return sliderTicks == 0 &&
+                sliderEnds == 0 &&
+                combo == 0 &&
                 geki == 0 &&
                 katu == 0 &&
                 n300 == 0 &&
@@ -23,12 +27,14 @@ data class JniScoreState(
         return if (isEmpty()) {
             0
         } else {
-            4 * 7
+            4 * 9
         }
     }
 
     override fun toBytes() = buffer {
         if (isEmpty()) return@buffer
+        putInt(sliderTicks)
+        putInt(sliderEnds)
         putInt(combo)
         putInt(geki)
         putInt(katu)
