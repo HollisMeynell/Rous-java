@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "rosu.pp.jni"
-version = "0.2.0"
+version = "0.2.0-lazer"
 
 repositories {
     mavenCentral()
@@ -23,7 +23,7 @@ dependencies {
 //    implementation("org.apache.xmlgraphics:batik-all:1.17")
     // 浏览器操作库
     // https://playwright.dev/java/docs/api/class-page#page-wait-for-url
-//    implementation("com.microsoft.playwright:playwright:1.45.1")
+//    implementation("com.microsoft.playwright:playwright:1.48.0")
 }
 
 tasks.test {
@@ -120,7 +120,7 @@ kotlin {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            groupId = project.group.toString()
+            groupId = "rosu.pp.jni"
             artifactId = "rosu-pp-jni"
             version = project.version.toString()
             from(components["java"])

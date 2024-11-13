@@ -4,6 +4,8 @@ import rosu.parameter.JniMapAttr
 import rosu.parameter.JniScore
 import rosu.result.JniCalculate
 import rosu.result.JniResult
+import java.nio.file.Files
+import kotlin.io.path.Path
 
 @Suppress("unused")
 object Rosu {

@@ -1,12 +1,13 @@
 use crate::java::{Error, Result};
-use crate::{to_ptr, to_status_use, StatusFlag};
+use crate::{to_ptr, to_status, to_status_use, StatusFlag};
 use bytes::{Buf, BufMut, Bytes};
 use jni::objects::JByteArray;
 use jni::JNIEnv;
-use rosu_pp::any::{PerformanceAttributes, ScoreState};
+use rosu_pp::any::{DifficultyAttributes, PerformanceAttributes, ScoreState};
 use rosu_pp::model::mode::GameMode;
-use rosu_pp::{Beatmap, Difficulty, GradualPerformance, Performance};
-use std::ops::Not;
+use rosu_pp::{Beatmap, Difficulty, GameMods, GradualPerformance, Performance};
+use std::ops::{Add, Not};
+use rosu_pp::osu::OsuPerformance;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct JniMapAttributes {
@@ -52,12 +53,13 @@ pub struct JniAttributes {
     pub mods: u32,
     pub speed: f64,
     pub accuracy: f64,
+    pub is_lazer: bool,
     pub map_attr: Option<JniMapAttributes>,
 }
 
 impl JniAttributes {
     pub fn mem_size() -> usize {
-        21 + 32
+        22 + 32
     }
 
     pub fn difficulty(&self) -> Difficulty {
@@ -135,6 +137,7 @@ impl Default for JniAttributes {
             mods: 0,
             speed: 0.0,
             accuracy: 0.0,
+            is_lazer: false,
             map_attr: None,
         }
     }
@@ -170,6 +173,7 @@ impl From<&[u8]> for JniAttributes {
         } else if accuracy < 1.001f64 {
             accuracy *= 100f64;
         }
+        let is_lazer = bytes.get_u8() == 1;
 
         let ar = bytes.get_f64();
         let od = bytes.get_f64();
@@ -183,6 +187,7 @@ impl From<&[u8]> for JniAttributes {
             mods,
             speed,
             accuracy,
+            is_lazer,
             map_attr: map_attr.to_data(),
         }
     }
@@ -428,4 +433,78 @@ fn set_state(n: u32, state: &mut ScoreState, fx: fn(&mut ScoreState, u32)) {
     if n > 0 {
         fx(state, n);
     };
+}
+
+#[test]
+fn b() -> Result<()> {
+    let b = Beatmap::from_path("/home/spring/Documents/Agressor Bunx - Tornado (Original Mix) (Shadren) [Insane].osu")?;
+    let mods = 1<<6 | 1<< 3;
+    let diff = Difficulty::new()
+        .mods(GameMods::from(mods));
+    let a = diff.calculate(&b);
+
+    let p = Performance::new(a)
+        .mods(mods)
+        .accuracy(94.89)
+        .combo(252)
+        .n300(299)
+        .n100(22)
+        .n50(1)
+        .misses(1)
+        .calculate();
+    println!("{p:?}");
+    Ok(())
+}
+
+fn a() -> Result<()> {
+    let mut b = Beatmap::from_path("")?;
+
+    let diff = Difficulty::new();
+    let x = to_ptr(diff);
+    println!("{x}");
+    let diff = to_status::<Difficulty>(x)?;
+    let n_diff = diff.ar(5f32, false)
+        .hardrock_offsets(false)
+        .clock_rate(50f64)
+        .hp(3f32, false)
+        .inspect().into_difficulty();
+    let p = n_diff.calculate(&b).performance();
+
+    let mods = GameMods::default();
+    let attr = n_diff.calculate(&b);
+
+    match attr {
+        DifficultyAttributes::Osu(a) => {
+            let p = a.stars;
+        }
+        DifficultyAttributes::Taiko(a) => {
+            let p = a.stars;
+        }
+        DifficultyAttributes::Catch(a) => {}
+        DifficultyAttributes::Mania(a) => {}
+    }
+    let mut p = Performance::new(&b);
+    let state = p.generate_state();
+    let c = p.calculate();
+    match c {
+        PerformanceAttributes::Osu(a) => {
+            println!("{}", a.pp_aim);
+        }
+        PerformanceAttributes::Taiko(_) => {}
+        PerformanceAttributes::Catch(_) => {}
+        PerformanceAttributes::Mania(_) => {}
+    }
+
+
+    Ok(())
+}
+
+#[test]
+fn test1() {
+    let mut s = String::new();
+    if let Ok(a) = std::io::stdin().read_line(&mut s) {
+        s.trim().chars()
+            .map(|c|{c as u8})
+            .for_each(|c| println!("{c}"))
+    }
 }

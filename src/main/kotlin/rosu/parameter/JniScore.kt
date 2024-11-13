@@ -43,6 +43,8 @@ data class JniScore(
 
     var combo: Int by state::combo
 
+    var isLazer: Boolean by attr::isLazer
+
     var sliderTicks: Int by state::sliderTicks
 
     var sliderEnds: Int by state::sliderEnds
