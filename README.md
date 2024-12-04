@@ -2,7 +2,7 @@
 ---
 一个基于 [`rosu-pp`](https://github.com/MaxOhn/rosu-pp) 计算星级以及 pp 的JNI库
 
-# 注意, 此项目不再进行非 bug 处理的维护, 替代项目即将在其他项目中作为子项目提供
+# 注意, 此项目不再进行维护, 替代项目请访问 [新项目](https://github.com/HollisMeynell/osu-framework/tree/master/spring-osu-extended)
 
 ## 下载
  [点击访问](https://disk.365246692.xyz/other/rosu-jni-release)
@@ -12,7 +12,7 @@
 详见下方编译**
 
 ## 使用
-** 已经优化在回收的对象持有 native 指针时, 但是仍然建议使用`try-with-resources`来主动回收 **
+** 请使用`try-with-resources`来主动回收native object **
 > kotlin 代码
 ```kotlin
 
